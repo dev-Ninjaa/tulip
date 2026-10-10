@@ -28,6 +28,9 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
       - name: Create local .env from example
         run: |
           cp .env.example .env
