@@ -1,0 +1,37 @@
+{
+  "name": "tulip-local-ai-routing",
+  "version": "1.0.0",
+  "description": "Cross-platform local inference setup and routing proxy for Tulip Android App (Ollama + Gemma 3 4B)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "setup": "ts-node scripts/setup.ts",
+    "start": "ts-node scripts/start.ts",
+    "stop": "ts-node scripts/stop.ts",
+    "status": "ts-node scripts/status.ts",
+    "test": "vitest run",
+    "test:inference": "ts-node scripts/test-inference.ts",
+    "test:vision": "ts-node scripts/test-inference.ts --vision"
+  },
+  "keywords": [
+    "tulip",
+    "ollama",
+    "gemma3",
+    "local-ai",
+    "android",
+    "routing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.13.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.7"
+  }
+}

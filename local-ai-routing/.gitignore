@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.log
+.ollama-managed-pid.json
+.router-pid.json
+coverage/
+.DS_Store
