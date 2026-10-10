@@ -1,0 +1,6 @@
+{
+  "name": "Tulip",
+  "description": "A personal AI-powered nature and camping journal for field notes, memories, and botanical explorations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
