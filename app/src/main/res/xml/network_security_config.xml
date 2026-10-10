@@ -1,40 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- By default, enforce strict cleartext traffic blocking for security -->
-    <base-config cleartextTrafficPermitted="false">
+    <!--
+      Cleartext (HTTP) is permitted globally to support local Ollama servers
+      on private LAN IPs (e.g. 192.168.x.x, 10.x.x.x).
+      All external AI calls (Gemini) use HTTPS and are unaffected.
+      Android's <domain> tag does not support IP subnet wildcards, so
+      a base-config allowance is the correct approach for raw IP addresses.
+    -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-
-    <!--
-      Permit cleartext HTTP ONLY for private IPv4 / local area network addresses
-      commonly used for self-hosted local Ollama servers (e.g. 192.168.x.x, 10.x.x.x, 172.16-31.x.x).
-      The user explicitly enters and configures their own local LAN server URL.
-    -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain> <!-- Android Emulator host loopback -->
-        <domain includeSubdomains="true">127.0.0.1</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <!-- Standard RFC 1918 private LAN subnets -->
-        <domain includeSubdomains="true">192.168.*</domain>
-        <domain includeSubdomains="true">10.*</domain>
-        <domain includeSubdomains="true">172.16.*</domain>
-        <domain includeSubdomains="true">172.17.*</domain>
-        <domain includeSubdomains="true">172.18.*</domain>
-        <domain includeSubdomains="true">172.19.*</domain>
-        <domain includeSubdomains="true">172.20.*</domain>
-        <domain includeSubdomains="true">172.21.*</domain>
-        <domain includeSubdomains="true">172.22.*</domain>
-        <domain includeSubdomains="true">172.23.*</domain>
-        <domain includeSubdomains="true">172.24.*</domain>
-        <domain includeSubdomains="true">172.25.*</domain>
-        <domain includeSubdomains="true">172.26.*</domain>
-        <domain includeSubdomains="true">172.27.*</domain>
-        <domain includeSubdomains="true">172.28.*</domain>
-        <domain includeSubdomains="true">172.29.*</domain>
-        <domain includeSubdomains="true">172.30.*</domain>
-        <domain includeSubdomains="true">172.31.*</domain>
-        <domain includeSubdomains="true">*.local</domain>
-    </domain-config>
 </network-security-config>

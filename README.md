@@ -14,7 +14,7 @@ Designed with a calm, light botanical field-notebook aesthetic (soft creams, mut
 
 2. **Selectable AI Providers (Gemini or Local Ollama)**
    - **Gemini (Default Cloud)**: Powered by `gemini-3.5-flash` for instant zero-configuration assistance.
-   - **Local Ollama (Gemma 3 4B)**: Powered by the local multimodal model `gemma3:4b` hosted on your private LAN/Wi-Fi workstation.
+   - **Local Ollama (Gemma 3 4B)**: Powered by the local multimodal model `gemma3:4b` hosted on your private LAN/Wi-Fi workstation. Your text and photos never leave your home network.
    - Seamlessly switch providers in **Settings > AI Provider**; your choice persists across restarts without altering journal content.
 
 3. **Preserve Original Voice**
@@ -47,24 +47,130 @@ Designed with a calm, light botanical field-notebook aesthetic (soft creams, mut
 ## AI Provider Configuration
 
 ### 1. Cloud: Google Gemini (Default)
+
 - Configured out of the box via `GEMINI_API_KEY` in `.env` or AI Studio Secrets.
 - Defaults to `gemini-3.5-flash`.
 - Adjustable in **Settings > Configure Gemini Model Identifier**.
 
-### 2. Local: Ollama (Gemma 3 4B Multimodal)
-- **Model Requirement**: `gemma3:4b` (supports both text and image input). Run on your host computer:
-  ```bash
-  ollama pull gemma3:4b
-  ```
-- **Network Setup**:
-  1. Ensure Ollama listens on your local network:
-     - On macOS/Linux: `OLLAMA_HOST=0.0.0.0 ollama serve`
-     - On Windows: set environment variable `OLLAMA_HOST=0.0.0.0`
-  2. Find your computer's local IP address (e.g. `192.168.1.100`).
-  3. In Tulip, navigate to **Settings > AI Provider**, select **Local Ollama (Gemma 3 4B)**, and enter:
-     `http://192.168.1.100:11434`
-  4. Tap **Test Connection** to verify that the server is reachable and `gemma3:4b` is installed.
-- *Note on Android Networking*: `localhost` on Android points to the phone itself. To connect to an Ollama server running on a laptop or desktop, enter the computer's reachable LAN IP address or a secure HTTPS tunnel. Tulip's network security configuration explicitly permits cleartext HTTP for private RFC 1918 LAN addresses (`192.168.*`, `10.*`, `172.16-31.*`) while strictly blocking cleartext to the public internet.
+---
+
+### 2. Local: Ollama + Gemma 3 4B
+
+This mode runs AI inference entirely on your own machine — no cloud, no API key, no data leaving your network. Your phone talks directly to Ollama running on your PC/laptop over Wi-Fi.
+
+#### Step 1 — Install Ollama
+
+Download and install Ollama for your OS from [https://ollama.com/download](https://ollama.com/download).
+
+- **Windows**: Run the installer `.exe`, Ollama starts automatically as a background service.
+- **macOS**: Open the `.dmg`, drag to Applications, launch it.
+- **Linux**: `curl -fsSL https://ollama.com/install.sh | sh`
+
+#### Step 2 — Download the Gemma 3 4B model
+
+Open a terminal and run:
+
+```bash
+ollama pull gemma3:4b
+```
+
+This downloads ~3.3 GB. Only needs to be done once.
+
+#### Step 3 — Allow Ollama to accept connections from your phone
+
+By default Ollama only listens on `localhost`, so your phone can't reach it even on the same Wi-Fi. You need to set `OLLAMA_HOST=0.0.0.0` to make it listen on all network interfaces.
+
+**Windows (permanent — do this once):**
+1. Open Start → search **"Edit the system environment variables"**
+2. Click **Environment Variables**
+3. Under **User variables**, click **New**
+4. Variable name: `OLLAMA_HOST` / Value: `0.0.0.0`
+5. Click OK, then restart Ollama (kill it in Task Manager, relaunch from Start)
+
+**macOS / Linux (per session):**
+```bash
+OLLAMA_HOST=0.0.0.0 ollama serve
+```
+
+**macOS / Linux (permanent):**
+Add this to your `~/.zshrc` or `~/.bashrc`:
+```bash
+export OLLAMA_HOST=0.0.0.0
+```
+Then restart the terminal and run `ollama serve`.
+
+#### Step 4 — Find your PC's local IP address
+
+**Windows PowerShell:**
+```powershell
+Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like "192.168.*" -or $_.IPAddress -like "10.*" } | Select-Object IPAddress, InterfaceAlias
+```
+
+**macOS / Linux:**
+```bash
+ip -4 addr show   # or: ifconfig | grep "inet "
+```
+
+Your IP will look like `192.168.x.x` or `10.x.x.x`.
+
+#### Step 5 — Configure Tulip on your phone
+
+1. Open Tulip → **Settings → AI Provider**
+2. Select **Local Ollama (Gemma 3 4B)**
+3. Enter your PC's IP:
+   ```
+   http://192.168.x.x:11434
+   ```
+4. Tap **Test Connection** — you should see a green confirmation.
+
+> **Tip**: Open `http://192.168.x.x:11434` in your phone's browser first to confirm reachability. You should see "Ollama is running".
+
+---
+
+## The `local-ai-routing/` folder
+
+The `local-ai-routing/` directory is an **optional Node.js reverse proxy** for the Ollama connection. It is not required for normal use — the Tulip app talks directly to Ollama on port `11434` by default.
+
+### Why does it exist?
+
+It was built to solve two specific scenarios:
+
+1. **Firewall / port restrictions**: If your network or corporate Wi-Fi blocks direct connections to port `11434`, the proxy runs on port `8787` which is less likely to be blocked.
+2. **Log sanitization & diagnostics**: The proxy strips Base64 image data and raw journal text from terminal logs before they hit your console, so you can debug connection issues without exposing private content.
+
+### What it does
+
+It's a lightweight Express.js TypeScript server that:
+- Listens on your LAN at `http://<your-ip>:8787`
+- Forwards `POST /api/chat` and `GET /api/tags` requests upstream to Ollama at `http://127.0.0.1:11434`
+- Strips prompt content and Base64 images from console logs for privacy
+- Provides setup, status, and teardown CLI scripts (`npm run setup`, `npm run start`, `npm run stop`, `npm run status`)
+- Auto-detects your Wi-Fi IP and prints the exact URL to paste into Tulip
+
+### When to use it
+
+Use the proxy if:
+- Direct connection to port `11434` fails on your network
+- You want the full diagnostics/setup CLI (`npm run setup` checks RAM, pulls the model, runs test inferences, and prints your URL)
+
+Use direct Ollama (`port 11434`) if:
+- Everything works — it's simpler with one fewer moving part
+
+### How to run it
+
+```bash
+cd local-ai-routing
+npm install
+npm run setup    # first time: checks requirements, pulls model, runs inference test
+npm run start    # starts the proxy server
+```
+
+Then in Tulip Settings use `http://<your-ip>:8787` instead of `11434`.
+
+To stop:
+```bash
+npm run stop
+```
 
 ---
 
@@ -72,50 +178,56 @@ Designed with a calm, light botanical field-notebook aesthetic (soft creams, mut
 
 ### Requirements
 - JDK 17
-- Android SDK 36 (minSdk: 24)
-- Gradle 9.x+
+- Android SDK 36 (minSdk 24)
+- Gradle 9.x (via wrapper — use `./gradlew`, not `gradle`)
 
 ### Local Commands
+
 ```bash
 # Run unit & Robolectric tests
-gradle testDebugUnitTest
+./gradlew testDebugUnitTest
 
 # Build debug APK
-gradle assembleDebug
+./gradlew assembleDebug
 
 # Build release APK (requires signing credentials)
-gradle assembleRelease
+./gradlew assembleRelease
 ```
 
-The debug APK output is located at:
-`app/build/outputs/apk/debug/app-debug.apk`
+The debug APK is at: `app/build/outputs/apk/debug/app-debug.apk`
 
 ---
 
 ## GitHub Actions CI/CD
 
-Tulip includes two automated GitHub Actions workflows located in `.github/workflows/`:
+Two automated workflows live in `.github/workflows/`:
 
-### 1. Push-triggered Builds (`build.yml`)
-- Triggers on every push and pull request to any branch.
-- Sets up JDK 17 and Android SDK.
-- Executes automated Robolectric and unit tests.
-- Compiles the debug APK and uploads it as an artifact named `tulip-debug-apk`.
+### `build.yml` — runs on every push & PR
 
-### 2. Tag-triggered Releases (`releases.yml`)
-- Triggers whenever a version tag matching `v*` (e.g. `v1.0.0`) is pushed.
-- Runs verification tests and builds the release APK.
-- Publishes a formal GitHub Release with the APK attached and auto-generated release notes.
+- Sets up JDK 17, generates a debug keystore, injects `GEMINI_API_KEY` from GitHub Secrets
+- Runs Robolectric unit tests
+- Builds the debug APK and uploads it as the `tulip-debug-apk` artifact (downloadable from the Actions tab, retained 14 days)
 
-#### PowerShell Commands for Creating & Pushing a Release
+### `releases.yml` — runs on `v*` tag push
+
+- Same setup as above, plus runs verification tests
+- If `KEYSTORE_BASE64` / `KEYSTORE_PASSWORD` / `KEY_ALIAS` / `KEY_PASSWORD` secrets are present → builds a signed release APK
+- If not → builds a debug APK as fallback
+- Publishes a GitHub Release with the APK attached and auto-generated release notes
+
+#### Creating a release
+
 ```powershell
-git tag v1.0.0
-git push origin v1.0.0
+git tag -a v1.0.1 -m "Your release message"
+git push origin v1.0.1
 ```
 
-#### GitHub Secrets for Release Signing (Optional)
-To produce a cryptographically signed release APK:
-- `KEYSTORE_BASE64`: Base64-encoded keystore file
-- `KEYSTORE_PASSWORD`: Keystore store password
-- `KEY_ALIAS`: Key alias name
-- `KEY_PASSWORD`: Key private password
+#### GitHub Secrets
+
+| Secret | Purpose |
+| :--- | :--- |
+| `GEMINI_API_KEY` | Bakes your Gemini API key into the APK at build time |
+| `KEYSTORE_BASE64` | Base64-encoded release keystore (optional, for signed builds) |
+| `KEYSTORE_PASSWORD` | Keystore store password |
+| `KEY_ALIAS` | Key alias name |
+| `KEY_PASSWORD` | Key private password |
