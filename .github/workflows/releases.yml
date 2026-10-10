@@ -28,17 +28,15 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Create local .env from example
         run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
+          cp .env.example .env
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            sed -i "s/GEMINI_API_KEY=MY_GEMINI_API_KEY/GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}/" .env
           fi
 
       - name: Run verification tests
-        run: gradle testDebugUnitTest
+        run: ./gradlew testDebugUnitTest
 
       - name: Check Release Signing Credentials
         id: check_signing
@@ -64,11 +62,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           if [ "${{ steps.check_signing.outputs.HAS_SIGNING }}" == "true" ]; then
-            gradle assembleRelease
+            ./gradlew assembleRelease
             cp app/build/outputs/apk/release/app-release.apk /tmp/Tulip-${{ github.ref_name }}.apk
           else
-            # Build release APK without custom upload key
-            gradle assembleDebug
+            ./gradlew assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk /tmp/Tulip-${{ github.ref_name }}-unsigned.apk
           fi
 

@@ -27,20 +27,18 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Create local .env from example
         run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
+          cp .env.example .env
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            sed -i "s/GEMINI_API_KEY=MY_GEMINI_API_KEY/GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}/" .env
           fi
 
       - name: Run Unit & Robolectric Tests
-        run: gradle testDebugUnitTest --continue
+        run: ./gradlew testDebugUnitTest --continue
 
       - name: Build Debug APK
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
